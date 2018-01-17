@@ -3,7 +3,7 @@ public with sharing class MetadataRetrieveController
     private static final Integer METADATA_API_VERSION = 
         Integer.valueOf(new MetadataService.MetadataAction().endpoint_x.substringAfterLast('/'));
 
-     public List<SelectOption> MetaDataTypes {get; set;}      
+    public List<SelectOption> MetaDataTypes {get; set;}      
     public String MetaDataFolder {get; set;}   
     public String MetadataFileName {get; set;}
     public String MetadataFileData {get; set;}
