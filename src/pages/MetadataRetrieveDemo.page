@@ -1,48 +1,33 @@
 <apex:page controller="MetadataRetrieveController">
-    <apex:includeScript value="{!URLFOR($Resource.jszip, '/jszip.js')}"/>
+    <!--apex:includeScript value="{!URLFOR($Resource.jszip, '/jszip.js')}"/>
     <apex:includeScript value="{!URLFOR($Resource.jszip, '/jszip-load.js')}"/>
     <apex:includeScript value="{!URLFOR($Resource.jszip, '/jszip-deflate.js')}"/>
-    <apex:includeScript value="{!URLFOR($Resource.jszip, '/jszip-inflate.js')}"/>   
+    <apex:includeScript value="{!URLFOR($Resource.jszip, '/jszip-inflate.js')}"/-->   
     <apex:form id="form" >
-        <apex:sectionHeader title="Metadata Retrieve Demo"/>
+        <apex:sectionHeader title="Metadata Setup Page"/>
         <apex:pageMessages id="messages"/>
         <apex:actionPoller action="{!checkAsyncRequest}" interval="5" rerender="form" rendered="{!NOT(ISNULL(AsyncResult))}"/>
-        <apex:pageBlock title="Layouts" rendered="{!AND(ISNULL(AsyncResult),ISNULL(MetaDataRetrieveZip))}">
+        <apex:pageBlock >
             <apex:pageBlockButtons >
                 <apex:commandButton value="Refresh" action="{!listMetadataItems}" />
                 <apex:commandButton value="Retrieve" action="{!retrieveMetadataItem}" />
             </apex:pageBlockButtons>
-            <apex:selectCheckboxes value="{!RetrieveMetadataTypes}">
-                <apex:selectOptions value="{!MetaDataTypes}"/>
-                <apex:actionSupport event="onchange"  action="{!listMetadataItems}"/> 
-            </apex:selectCheckboxes>           
-            <apex:pageBlockTable value="{!MetaDataItems}" var="meta">
-                <apex:column headerValue="Metadata Item">
-                    <apex:outputText value="{!meta.Value}" /> 
+                <apex:selectCheckboxes value="{!RetrieveMetadataTypes}" title="On change, below selected items get reset">
+                    <apex:selectOptions value="{!MetaDataTypes}"/>
+                    <apex:actionSupport event="onchange" action="{!listMetadataItems}" /> 
+                </apex:selectCheckboxes>           
+            <apex:pageBlockTable value="{!MetaItemWrappers}" var="meta" rows="20">
+                <apex:column >
+                    <apex:facet name="header">
+                        <apex:outputText value="Select All">
+                            <apex:inputCheckbox id="checkedall" onclick="checkThis(this)" />
+                        </apex:outputText>
+                    </apex:facet>
+                    <apex:inputCheckbox value="{!meta.Selected}" id="checkedrow" onclick="checkThis(this)" />
                 </apex:column>
-                <apex:column headerValue="Metadata Type">
-                    <apex:outputText value="{!meta.Label}"/>
-                </apex:column>
+                <apex:column headerValue="Metadata Item" value="{!meta.MDataItem.Value}" />
+                <apex:column headerValue="Metadata Type" value="{!meta.MDataItem.Label}"/>
             </apex:pageBlockTable>
-            <!--apex:pageBlockSection columns="1">
-                <apex:pageBlockSectionItem >
-                    <apex:outputLabel value="Metadata Type:" />
-                    <apex:selectList size="1" value="{!MetadataType}" >
-                        <apex:selectOptions value="{!MetadataTypes}"/>
-                        <apex:actionSupport event="onchange"  action="{!listMetadataItems}"/> 
-                    </apex:selectList>
-                </apex:pageBlockSectionItem>
-                <apex:pageBlockSectionItem >
-                    <apex:outputLabel value="Metadata Folder" />
-                    <apex:inputText value="{!MetaDataFolder}" /> 
-                </apex:pageBlockSectionItem>                
-                <apex:pageBlockSectionItem >
-                    <apex:outputLabel value="Metadata Item:" />
-                    <apex:selectList size="1" value="{!MetaDataItem}" >
-                        <apex:selectOptions value="{!MetaDataItems}"/>
-                    </apex:selectList>
-                </apex:pageBlockSectionItem>
-            </apex:pageBlockSection-->
         </apex:pageBlock>   
         <apex:outputPanel rendered="{!NOT(ISNULL(MetaDataRetrieveZip))}">
             <apex:actionFunction name="receiveFile" action="{!receiveMetadataZipFile}" rerender="messages,files" oncomplete="unzip();">
@@ -63,4 +48,51 @@
             </apex:pageBlockSection>
         </apex:pageBlock>
     </apex:form>
+    <script type="text/javascript">
+        function checkThis(cb)
+        {
+            var selAll = new Boolean(true);
+            var selAllIdx;
+            var inputElem = document.getElementsByTagName("input");
+            for(var i=0; i<inputElem.length; i++)
+            {
+                if(inputElem[i].id.indexOf("checkedall") != -1)
+                    selAllIdx = i;
+                if(cb.name.indexOf("checkedall") != -1)
+                {
+                    if(inputElem[i].id.indexOf("checkedrow") != -1)
+                        inputElem[i].checked = cb.checked;
+                } else if(cb.name.indexOf("checkedrow") != -1)
+                {
+                    if(inputElem[i].id.indexOf("checkedrow") != -1 && inputElem[i].checked == false && selAll == true)
+                        selAll = inputElem[i].checked;
+                    if(cb.checked == false)
+                    {
+                        if(inputElem[i].id.indexOf("checkedall") != -1)
+                            inputElem[i].checked = false;
+                    } else if (cb.checked == true)
+                    {
+                        if(i == inputElem.length - 1 && selAll == true)
+                        {
+                            inputElem[selAllIdx].checked = cb.checked;
+                        }          
+                    }
+                }
+            }
+        }
+    </script>
+    <!--script type="text/javascript">
+        function 
+        
+        
+        ()
+        {
+            var inputElem = document.getElementsByTagName("input");
+            for(var i=0; i<inputElem.length; i++)
+            {
+                if(inputElem[i].id.indexOf("checkedall") != -1)
+                    inputElem[i].checked = false;
+            }
+        }
+    </script-->    
 </apex:page>

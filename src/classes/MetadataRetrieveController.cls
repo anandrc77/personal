@@ -3,19 +3,17 @@ public with sharing class MetadataRetrieveController
     private static final Integer METADATA_API_VERSION = 
         Integer.valueOf(new MetadataService.MetadataAction().endpoint_x.substringAfterLast('/'));
 
-    public List<SelectOption> MetaDataTypes {get; set;}
-    public String MetaDataType {get; set;}      
-    public List<SelectOption> MetaDataItems {get; set;}
-    public List<String> RetrieveTypes {get; set;}
-    public String MetaDataFolder {get; set;} 
-    public String MetaDataItem {get; set;}  
+    public List<SelectOption> MetaDataTypes {get; set;}      
+    public String MetaDataFolder {get; set;}   
     public String MetadataFileName {get; set;}
     public String MetadataFileData {get; set;}
     public MetadataService.AsyncResult AsyncResult {get; private set;}
     public String MetaDataRetrieveZip { get; private set; } 
     public List<MetadataFile> MetadataFiles { get; set; } 
-    public List<String> RetrieveMetadataTypes { get; set; }   
-    
+    public List<String> RetrieveMetadataTypes { get; set; }
+    public List<SelectOption> SelectedMetadataItems { get; set; }
+    public List<MetadataItemWrapper> MetaItemWrappers {get; set;}
+        
     public MetadataRetrieveController()
     {
         // List available Metadata Types via the 'describeMetadata' API call
@@ -40,46 +38,38 @@ public with sharing class MetadataRetrieveController
         metadataTypeNames.sort();
         MetaDataTypes = new List<SelectOption>();               
         for(String metadataTypeName : metadataTypeNames)
-            MetaDataTypes.add(new SelectOption(metadataTypeName, metadataTypeName));
-
-        // Default to first Metadata Type returned  
-        //MetaDataType = MetaDataTypes[0].getValue(); 
-        // Retrieve Metadata items for the selected Metadata Type
-        //listMetadataItems();           
+            MetaDataTypes.add(new SelectOption(metadataTypeName, metadataTypeName));          
     }
     
     public PageReference listMetadataItems()
     {
-        // List Metadata items for the selected Metadata Type
-        MetaDataItems = new List<SelectOption>();       
+        // List Metadata items for the selected Metadata Type       
         MetadataService.MetadataAction service = createService();             
         List<MetadataService.ListMetadataQuery> queries = new List<MetadataService.ListMetadataQuery>();        
-        MetadataService.ListMetadataQuery queryLayout = new MetadataService.ListMetadataQuery();
+        MetadataService.ListMetadataQuery queryLayout;
         if(MetaDataFolder!=null && MetaDataFolder.length()>0)
             queryLayout.folder = MetaDataFolder;
-        if(RetrieveMetadataTypes!=null)
+        if(RetrieveMetadataTypes.size()>0)
         {
             for(String retrieveMetaType : RetrieveMetadataTypes)
             {
-                MetadataType = retrieveMetaType;
-                queryLayout.type_x = MetaDataType;
+                queryLayout = new MetadataService.ListMetadataQuery();
+                queryLayout.type_x = retrieveMetaType;
                 queries.add(queryLayout);
             }
-        }/* else
-        {
-            queryLayout.type_x = MetaDataType;
-            queries.add(queryLayout);           
-        }*/
+        }else
+            return null;
+            
         MetadataService.FileProperties[] fileProperties = service.listMetadata(queries, METADATA_API_VERSION);
         
-        // Sort
-        List<String> fullNames = new List<String>();
         if(fileProperties!=null)
         {
+            MetaItemWrappers = new List<MetadataItemWrapper>();
             for(MetadataService.FileProperties fileProperty : fileProperties)
             {
-                //String subString = String.(fileProperty.fullName)
-                MetaDataItems.add(new SelectOption(fileProperty.fullName,EncodingUtil.urlDecode(fileProperty.type_x, 'UTF-8')));
+                SelectOption MetadataItem = new SelectOption(fileProperty.fullName,EncodingUtil.urlDecode(fileProperty.type_x, 'UTF-8'));
+                //MetaDataItems.add(MetadataItem);
+                MetaItemWrappers.add(new MetadataItemWrapper(MetadataItem));
             }
         }
 
@@ -100,13 +90,22 @@ public with sharing class MetadataRetrieveController
         retrieveRequest.apiVersion = METADATA_API_VERSION;
         retrieveRequest.packageNames = null;
         retrieveRequest.singlePackage = true;
-        retrieveRequest.specificFiles = RetrieveTypes;
+        retrieveRequest.specificFiles = null;
         retrieveRequest.unpackaged = new MetadataService.Package_x();
         retrieveRequest.unpackaged.types = new List<MetadataService.PackageTypeMembers>();
-        MetadataService.PackageTypeMembers packageType = new MetadataService.PackageTypeMembers();
-        packageType.name = MetaDataType; 
-        packageType.members = new String[] { MetadataFolder, MetaDataItem };
-        retrieveRequest.unpackaged.types.add(packageType);
+        MetadataService.PackageTypeMembers packageType;
+        if(SelectedMetadataItems.size()>0)
+        {
+            for(SelectOption selectedMetadataItem : SelectedMetadataItems)
+            {        
+                packageType = new MetadataService.PackageTypeMembers();
+                packageType.name = selectedMetadataItem.getLabel(); 
+                packageType.members = new String[] { MetadataFolder, selectedMetadataItem.getValue() };
+                retrieveRequest.unpackaged.types.add(packageType);
+            }
+        }else
+            return null;
+            
         AsyncResult = service.retrieve(retrieveRequest);
                         
         return null;    
@@ -161,6 +160,27 @@ public with sharing class MetadataRetrieveController
         return null;
     }
     
+    /*public PageReference addMetadataItem()
+    {
+        if(SelectedMetadataItems!=null)
+        {
+            SelectedMetadataItems.clear();
+            System.debug('Not null');
+        }    
+        else
+        {
+            SelectedMetadataItems = new List<SelectOption>();
+            System.debug('Is null');
+        }
+
+        for(MetadataItemWrapper meta : MetaItemWrappers)
+        {
+            if(meta.Selected == true)
+                SelectedMetadataItems.add(meta.MDataItem);
+        }
+        return null;
+    }*/
+    
     private static MetadataService.MetadataAction createService()
     { 
         MetadataService.MetadataAction service = new MetadataService.MetadataAction();
@@ -182,6 +202,20 @@ public with sharing class MetadataRetrieveController
         public String getContent()
         {
             return content;
+        }
+    }
+    
+    public class MetadataItemWrapper
+    {
+        public SelectOption MDataItem {get; set;}
+        public Boolean Selected {get; set;}
+        public MetadataItemWrapper(SelectOption meta)
+        {
+            if(meta!=null)
+            {
+                MDataItem = meta;
+                Selected = false;
+            }
         }
     }
 }
